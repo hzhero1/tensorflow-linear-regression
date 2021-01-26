@@ -1,18 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import linear_model
-from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
+# from sklearn import linear_model
+# from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
 from sklearn.model_selection import train_test_split
 import pickle
 import tensorflow as tf
 
+a = np.array([])
 # tf.compat.v1.disable_eager_execution()
 
 np.random.seed(101)
 tf.random.set_seed(101)
 initializer = tf.random_normal_initializer(seed=1)
 X_train = np.random.random((100, 10)) * 100
-Y_train = (2 * np.sum(X_train[:, :1], axis=1) + 3 * np.sum(X_train[:, 2:3], axis=1))[:, tf.newaxis]
+# Y_train = (2 * np.sum(X_train[:, :1], axis=1) + 3 * np.sum(X_train[:, 2:3], axis=1))[:, tf.newaxis]
+Y_train = np.sum(X_train[:, :5], axis=1)[:, tf.newaxis]
 X_train, X_test, Y_train, Y_test = train_test_split(X_train, Y_train, test_size=0.2)
 
 print([(x, y) for x, y in zip(X_train[:10], Y_train[:10])])
@@ -22,8 +24,6 @@ X_test = tf.constant(X_test, dtype=tf.float32)
 Y_test = tf.constant(Y_test, dtype=tf.float32)
 print(X_train.shape)
 print(Y_train.shape)
-# Y_test = Y_test[:, tf.newaxis]
-# Y_train = Y_train[:, tf.newaxis]
 
 num_features = X_train.shape[1]
 weight = tf.Variable(np.random.random((num_features, 1)), dtype=tf.float32)
@@ -40,8 +40,8 @@ def mean_squared_error(y, y_pred):
 
 
 def loss(x, y, w, b, alpha):
-    return tf.reduce_mean(tf.square(model(x, w, b) - y))
-    # return tf.reduce_mean(tf.square(model(x, w, b) - y)) + alpha * tf.norm(w, ord=1)
+    # return tf.reduce_mean(tf.square(model(x, w, b) - y))
+    return tf.reduce_mean(tf.square(model(x, w, b) - y)) + alpha * tf.norm(w, ord=1)
     # return tf.reduce_mean(tf.square(model(x, w, b) - y))  # + alpha * tf.square(tf.abs(w * 2 - 1) - 1)
     # return tf.reduce_mean(tf.square(model(x, w, b) - y)) + tf.square(tf.norm(2 * w - 1)) + alpha * tf.norm(w, ord=1)
 
@@ -69,9 +69,9 @@ def show_plot(alphas, scores):
     plt.show()
 
 
-num_epochs = 1000
+num_epochs = 3000
 num_samples = X_train.shape[0]
-batch_size = X_train.shape[0]
+batch_size = 128
 learning_rate = 0.01
 # alphas = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
 # alphas.reverse()
@@ -88,7 +88,7 @@ train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
 for alpha in alphas:
     w = tf.Variable(tf.identity(weight), dtype=tf.float32)
-    # print("\n{}".format(w))
+    print("\n{}".format(w))
     for epoch in range(num_epochs):
         # print("\nStart of epoch %d" % (epoch,))
         for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
@@ -96,10 +96,12 @@ for alpha in alphas:
                 tape.watch(w)
                 loss_value = loss(x_batch_train, y_batch_train, w, b, alpha)
             grads = tape.gradient(loss_value, w)
+            # print(grads)
             optimizer.apply_gradients(zip([grads], [w]))
             # w.assign_sub(learning_rate * grads)
             train_mse = mean_squared_error(y_batch_train, model(x_batch_train, w, b))
             test_mse = mean_squared_error(Y_test, model(X_test, w, b))
+        # print(w)
         print("Training loss at epoch %d: %s" % (epoch, np.array(train_mse)))
         errors_train.append(train_mse)
         errors_test.append(test_mse)
